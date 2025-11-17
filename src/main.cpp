@@ -561,3 +561,131 @@ void pruebasFuncionales() {
     cout << "[OK] Pruebas de rendimiento completadas" << endl;
 }
 
+
+// ========== ANÁLISIS EXPERIMENTAL ==========
+void analisisExperimental() {
+    cout << "\n========== ANÁLISIS EXPERIMENTAL ==========\n" << endl;
+    
+    // Experimento 1: Comparación de diferentes configuraciones de umbral
+    cout << "Experimento 1: Sensibilidad del detector de picos" << endl;
+    cout << "Probando diferentes umbrales de detección...\n" << endl;
+    
+    double fs = 1000.0;
+    int duracion = 10;
+    vector<double> senal_exp(fs * duracion, 0.0);
+    
+    // Generar señal con ruido controlado
+    for (size_t i = 0; i < static_cast<size_t>(fs * duracion); i += 800) {
+        if (i < senal_exp.size()) {
+            senal_exp[i] = 1.0;
+            if (i+1 < senal_exp.size()) senal_exp[i+1] = 0.7;
+        }
+    }
+    
+    // Agregar ruido
+    for (size_t i = 0; i < senal_exp.size(); i++) {
+        senal_exp[i] += 0.1 * (rand() % 100 / 100.0 - 0.5);
+    }
+    
+    vector<double> umbrales = {0.3, 0.5, 0.7, 0.9};
+    cout << "Umbral\tPicos\tBPM" << endl;
+    cout << "------\t-----\t---" << endl;
+    
+    for (double umbral : umbrales) {
+        ResultadosBPM resultado = extraerBPM(senal_exp, fs, umbral);
+        cout << umbral << "\t" << resultado.indices_picos.size() 
+             << "\t" << resultado.bpm_promedio << endl;
+    }
+    
+    // Experimento 2: Efectividad del filtrado de frecuencias
+    cout << "\nExperimento 2: Efectividad del filtrado de frecuencias" << endl;
+    cout << "Comparando señal original vs filtrada...\n" << endl;
+    
+    vector<double> senal_mixta(4096, 0.0);
+    for (size_t i = 0; i < senal_mixta.size(); i++) {
+        double t = i / fs;
+        senal_mixta[i] = sin(2 * PI * 1.2 * t) +
+                        0.3 * sin(2 * PI * 5 * t) +
+                        0.2 * sin(2 * PI * 0.1 * t);
+    }
+    
+    vector<complex<double>> espectro_orig = obtenerEspectroParaFiltrado(senal_mixta);
+    
+    double energia_original = 0.0;
+    for (const auto& val : espectro_orig) {
+        energia_original += abs(val) * abs(val);
+    }
+    
+    vector<complex<double>> espectro_filt = espectro_orig;
+    filtrarFrecuencias(espectro_filt, fs);
+    
+    double energia_filtrada = 0.0;
+    for (const auto& val : espectro_filt) {
+        energia_filtrada += abs(val) * abs(val);
+    }
+    
+    cout << "Energía original: " << energia_original << endl;
+    cout << "Energía filtrada: " << energia_filtrada << endl;
+    cout << "Reducción: " << (100.0 * (1 - energia_filtrada/energia_original)) << "%" << endl;
+    
+    // Experimento 3: Análisis de variabilidad cardíaca
+    cout << "\nExperimento 3: Análisis de variabilidad de frecuencia cardíaca" << endl;
+    cout << "Simulando diferentes condiciones de ritmo cardíaco...\n" << endl;
+    
+    struct ConfiguracionRitmo {
+        string nombre;
+        vector<double> intervalos_rr;
+    };
+    
+    vector<ConfiguracionRitmo> configuraciones = {
+        {"Ritmo regular", {0.8, 0.8, 0.8, 0.8, 0.8, 0.8}},
+        {"Variabilidad baja", {0.8, 0.82, 0.79, 0.81, 0.80, 0.78}},
+        {"Variabilidad moderada", {0.8, 0.9, 0.7, 0.85, 0.75, 0.88}},
+        {"Variabilidad alta", {0.6, 1.0, 0.7, 1.2, 0.5, 0.9}}
+    };
+    
+    cout << "Condición\t\tSDNN\tIrregularidad" << endl;
+    cout << "----------\t\t----\t-------------" << endl;
+    
+    for (const auto& config : configuraciones) {
+        double promedio = accumulate(config.intervalos_rr.begin(), 
+                                    config.intervalos_rr.end(), 0.0) / config.intervalos_rr.size();
+        double varianza = 0.0;
+        for (double rr : config.intervalos_rr) {
+            varianza += pow(rr - promedio, 2);
+        }
+        varianza /= config.intervalos_rr.size();
+        double sdnn = sqrt(varianza);
+        
+        string irregularidad = (sdnn > 0.10) ? "Sí" : "No";
+        cout << config.nombre << "\t" << sdnn << "\t" << irregularidad << endl;
+    }
+    
+    // Experimento 4: Tiempo de procesamiento vs tamaño de señal
+    cout << "\nExperimento 4: Complejidad temporal del algoritmo FFT" << endl;
+    cout << "Midiendo tiempo de ejecución para diferentes tamaños...\n" << endl;
+    
+    cout << "N\t\tTiempo (ms)\tTiempo/N*log(N)" << endl;
+    cout << "---\t\t-----------\t---------------" << endl;
+    
+    vector<int> tamanos = {512, 1024, 2048, 4096, 8192};
+    for (int n : tamanos) {
+        vector<double> senal_tiempo(n, 0.0);
+        for (int i = 0; i < n; i++) {
+            senal_tiempo[i] = sin(2 * PI * i / n);
+        }
+        
+        auto inicio = std::chrono::high_resolution_clock::now();
+        vector<complex<double>> resultado = fft_real(senal_tiempo);
+        auto fin = std::chrono::high_resolution_clock::now();
+        
+        auto duracion_ms = std::chrono::duration_cast<std::chrono::microseconds>(fin - inicio).count() / 1000.0;
+        double nlogn = n * log2(n);
+        double ratio = duracion_ms / nlogn;
+        
+        cout << n << "\t\t" << duracion_ms << "\t\t" << ratio << endl;
+    }
+    
+    cout << "\n[OK] Análisis experimental completado" << endl;
+}
+
