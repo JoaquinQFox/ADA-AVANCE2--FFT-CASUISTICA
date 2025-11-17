@@ -689,3 +689,66 @@ void analisisExperimental() {
     cout << "\n[OK] Análisis experimental completado" << endl;
 }
 
+
+// ========== MAIN: INTEGRACIÓN COMPLETA ==========
+int main() {
+    cout << "================================================" << endl;
+    cout << "  SISTEMA DE DETECCIÓN DE ANOMALÍAS CARDÍACAS" << endl;
+    cout << "  Filtrado de Frecuencia Cardíaca con FFT" << endl;
+
+    
+    // Ejecutar pruebas unitarias
+    pruebasUnitarias();
+    
+    // Ejecutar pruebas funcionales
+    pruebasFuncionales();
+    
+    // Ejecutar análisis experimental
+    analisisExperimental();
+    
+    // Procesamiento de archivo WAV 
+    cout << "\n========== PROCESAMIENTO DE ARCHIVO WAV ==========\n" << endl;
+    
+    string nombre_archivo;
+    cout << "Ingrese nombre del archivo WAV (o 'skip' para omitir): ";
+    cin >> nombre_archivo;
+    
+    if (nombre_archivo != "skip") {
+        try {
+            cout << "\nCargando y normalizando audio..." << endl;
+            vector<double> senal = cargar_normalizar_wav(nombre_archivo.c_str());
+            cout << "Audio cargado: " << senal.size() << " muestras" << endl;
+            
+            double frecuencia_muestreo = 44100.0;
+            
+            cout << "\nAplicando FFT y filtrado..." << endl;
+            vector<complex<double>> espectro = obtenerEspectroParaFiltrado(senal);
+            filtrarFrecuencias(espectro, frecuencia_muestreo);
+            
+            cout << "Aplicando IFFT..." << endl;
+            vector<double> senal_filtrada = ifft_real(espectro);
+            senal_filtrada.resize(senal.size());
+            
+            cout << "Extrayendo BPM..." << endl;
+            ResultadosBPM resultados = extraerBPM(senal_filtrada, frecuencia_muestreo);
+            
+            cout << "\n--- RESULTADOS ---" << endl;
+            cout << "BPM promedio: " << resultados.bpm_promedio << endl;
+            cout << "Picos detectados: " << resultados.indices_picos.size() << endl;
+            cout << "Intervalos RR: " << resultados.intervalos_rr_segundos.size() << endl;
+            
+            cout << "\nDetectando anomalías..." << endl;
+            Anomalias anomalias = detectarAnomalias(resultados);
+            
+            cout << "\n--- DIAGNÓSTICO ---" << endl;
+            for (const auto& alerta : anomalias.lista_alertas) {
+                cout << "• " << alerta << endl;
+            }
+            
+        } catch (exception& e) {
+            cout << "Error procesando archivo: " << e.what() << endl;
+        }
+    }
+
+    return 0;
+}
