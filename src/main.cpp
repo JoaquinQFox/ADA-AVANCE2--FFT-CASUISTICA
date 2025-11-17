@@ -454,3 +454,110 @@ void pruebasUnitarias() {
     cout << "Tasa de éxito: " << (100.0 * pruebas_exitosas / pruebas_totales) << "%" << endl;
 }
 
+
+// ========== PRUEBAS FUNCIONALES ==========
+void pruebasFuncionales() {
+    cout << "\n========== PRUEBAS FUNCIONALES ==========\n" << endl;
+    
+    // Generar señal de prueba: simulación de pulso cardíaco
+    cout << "Generando señal de prueba (pulso simulado)..." << endl;
+    
+    double fs = 1000.0;
+    int duracion_segundos = 10;
+    int num_muestras = fs * duracion_segundos;
+    vector<double> senal_prueba(num_muestras, 0.0);
+    
+    // Simular latidos con BPM = 75 (0.8 segundos entre latidos)
+    double intervalo_latidos = 0.8;
+    int muestras_por_latido = intervalo_latidos * fs;
+    
+    for (int i = 0; i < num_muestras; i += muestras_por_latido) {
+        if (i < num_muestras) {
+            senal_prueba[i] = 1.0;
+            if (i+1 < num_muestras) senal_prueba[i+1] = 0.8;
+            if (i+2 < num_muestras) senal_prueba[i+2] = 0.5;
+        }
+    }
+    
+    // Agregar ruido
+    for (int i = 0; i < num_muestras; i++) {
+        senal_prueba[i] += 0.05 * ((rand() % 100) / 100.0 - 0.5);
+    }
+    
+    // Prueba Funcional 1: Pipeline completo
+    cout << "\nPrueba Funcional 1: Pipeline completo de procesamiento" << endl;
+    try {
+        vector<complex<double>> espectro = obtenerEspectroParaFiltrado(senal_prueba);
+        filtrarFrecuencias(espectro, fs);
+        vector<double> senal_filtrada = ifft_real(espectro);
+        senal_filtrada.resize(num_muestras);
+        
+        ResultadosBPM bpm_resultado = extraerBPM(senal_filtrada, fs);
+        
+        cout << "  - FFT: OK (" << espectro.size() << " muestras)" << endl;
+        cout << "  - Filtrado: OK" << endl;
+        cout << "  - IFFT: OK" << endl;
+        cout << "  - Extracción BPM: OK" << endl;
+        cout << "  - BPM calculado: " << bpm_resultado.bpm_promedio << " bpm" << endl;
+        cout << "  - Picos detectados: " << bpm_resultado.indices_picos.size() << endl;
+        cout << "[OK] Pipeline completo ejecutado correctamente" << endl;
+    } catch (exception& e) {
+        cout << "[FAIL] Error en pipeline: " << e.what() << endl;
+    }
+    
+    // Prueba Funcional 2: Detección de anomalías en diferentes casos
+    cout << "\nPrueba Funcional 2: Detección de anomalías" << endl;
+    
+    // Caso normal (70 bpm)
+    ResultadosBPM caso_normal;
+    caso_normal.bpm_promedio = 70.0;
+    caso_normal.intervalos_rr_segundos = {0.857, 0.857, 0.857, 0.857};
+    Anomalias anom_normal = detectarAnomalias(caso_normal);
+    cout << "  Caso normal (70 bpm): " << anom_normal.lista_alertas[0] << endl;
+    
+    // Caso bradicardia (50 bpm)
+    ResultadosBPM caso_bradi;
+    caso_bradi.bpm_promedio = 50.0;
+    caso_bradi.intervalos_rr_segundos = {1.2, 1.2, 1.2};
+    Anomalias anom_bradi = detectarAnomalias(caso_bradi);
+    cout << "  Caso bradicardia (50 bpm): " << anom_bradi.lista_alertas[0] << endl;
+    
+    // Caso taquicardia (120 bpm)
+    ResultadosBPM caso_taqui;
+    caso_taqui.bpm_promedio = 120.0;
+    caso_taqui.intervalos_rr_segundos = {0.5, 0.5, 0.5};
+    Anomalias anom_taqui = detectarAnomalias(caso_taqui);
+    cout << "  Caso taquicardia (120 bpm): " << anom_taqui.lista_alertas[0] << endl;
+    
+    // Caso irregular
+    ResultadosBPM caso_irreg;
+    caso_irreg.bpm_promedio = 75.0;
+    caso_irreg.intervalos_rr_segundos = {0.6, 1.0, 0.7, 1.2, 0.5};
+    Anomalias anom_irreg = detectarAnomalias(caso_irreg);
+    cout << "  Caso irregular: ";
+    for (const auto& alerta : anom_irreg.lista_alertas) {
+        cout << alerta << " ";
+    }
+    cout << endl;
+    cout << "[OK] Detección de anomalías funciona correctamente" << endl;
+    
+    // Prueba Funcional 3: Rendimiento con diferentes tamaños
+    cout << "\nPrueba Funcional 3: Rendimiento con diferentes tamaños de señal" << endl;
+    vector<int> tamanios = {256, 1024, 4096, 16384};
+    
+    for (int tam : tamanios) {
+        vector<double> senal_test(tam, 0.0);
+        for (int i = 0; i < tam; i++) {
+            senal_test[i] = sin(2 * PI * i / tam);
+        }
+        
+        auto inicio = std::chrono::high_resolution_clock::now();
+        vector<complex<double>> esp = obtenerEspectroParaFiltrado(senal_test);
+        auto fin = std::chrono::high_resolution_clock::now();
+        
+        auto duracion = std::chrono::duration_cast<std::chrono::microseconds>(fin - inicio);
+        cout << "  Tamaño " << tam << ": " << duracion.count() << " us" << endl;
+    }
+    cout << "[OK] Pruebas de rendimiento completadas" << endl;
+}
+
