@@ -129,7 +129,44 @@ void filtrarFrecuencias(vector<complex<double>>& fft, double fs) { // fs = frecu
 
 
 // IFFT
-
+vector<complex<double>> ifft(const vector<complex<double>>& X) 
+{
+    size_t N = X.size();
+    if (N <= 1) return X; 
+    //Verificar que N sea potencia de 2
+    // usen try-catch para probar 
+    if ((N & (N - 1)) != 0)
+    {
+        throw runtime_error("IFFT requiere que el tamaño sea potencia de 2");
+    }
+    // Conjugar las muestras de entrada
+    vector<complex<double>> X_conj(N);
+    for (size_t i = 0; i < N; ++i) 
+    {
+        X_conj[i] = conj(X[i]);
+    }
+    //fft a las muestras
+    vector<complex<double>> x_conj = fft(X_conj);
+    // Conjugar el resultado y dividir por N
+    vector<complex<double>> x(N);
+    for (size_t i = 0; i < N; ++i) 
+    {
+        x[i] = conj(x_conj[i]) / static_cast<double>(N);
+    }
+    return x;
+}
+/*
+Para extraer la parte real despues de de la ifft
+*/
+vector<double> ifft_real(const vector<complex<double>>& X) {
+    vector<complex<double>> resultado = ifft(X);
+    vector<double> real(resultado.size());
+    for (size_t i = 0; i < resultado.size(); ++i) 
+    {
+        real[i] = resultado[i].real();
+    }
+    return real;
+}
 
 
 // Extracción de BPM
