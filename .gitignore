@@ -1,0 +1,54 @@
+# Archivos de compilación
+*.o
+*.obj
+*.so
+*.exe
+*.out
+*.dll
+*.a
+*.lib
+*.class
+
+# Archivos de depuración
+*.dSYM/
+*.d
+*.log
+
+# Archivos de IDEs
+# Visual Studio
+*.vcxproj*
+*.sln
+*.user
+*.opensdf
+*.sdf
+*.ipch
+*.pdb
+
+# Code::Blocks
+*.cbp
+*.layout
+
+# Qt Creator
+*.pro.user*
+*.qbs.user*
+*.moc
+*.qmlc
+*.qmltypes
+*.qrc.dep
+
+# CLion
+cmake-build-*/
+.idea/
+
+# Archivos temporales del sistema
+*~
+*.swp
+*.tmp
+.DS_Store
+Thumbs.db
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
