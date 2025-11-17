@@ -7,12 +7,24 @@
 using namespace std;
 
 // Instrucciones de uso:
-// Se trabaja con un audio WAV
+// audio WAV
+// audio MONO
+// audio de 16 bits
 
 // Lectura de audio
 vector <double> cargar_normalizar_wav (const char* filename) {
     
     drwav wav;
+    
+    // Excepción de error al abrir
+    if (!drwav_init_file(&wav, filename, NULL))
+        throw runtime_error("No se abre audio WAV");
+
+    // Excepción de audio MONO
+    if (wav.channels != 1) {
+        drwav_uninit(&wav);
+        throw runtime_error("El audio solo permite de 1 canal (MONO)");
+    }
 
     // Lectura de muestras de audios WAV
     vector<int16_t> samples(wav.totalPCMFrameCount);
