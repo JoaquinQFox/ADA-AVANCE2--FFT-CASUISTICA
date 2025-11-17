@@ -7,8 +7,12 @@
 #include <complex>
 #include <numeric>
 #include <algorithm>
+#include <chrono>
+#include <cstdlib>
 
 using namespace std;
+
+const double PI = acos(-1.0);
 
 // Instrucciones de uso:
 // audio WAV
@@ -71,7 +75,6 @@ vector<complex<double>> fft(const vector<complex<double>>& x) {
 
     // Combinar resultados
     vector<complex<double>> F(N);
-    const double PI = acos(-1.0);
 
     for (size_t k = 0; k < N / 2; ++k) {
         complex<double> wk = polar(1.0, -2.0 * PI * k / static_cast<double>(N));
@@ -189,7 +192,7 @@ vector<size_t> detectarPicos(const vector<double>& senal_filtrada, double umbral
             
             bool es_pico_valido = true;
             if (!indices_picos.empty()) {
-                if (i - indices_picos.back() < distancia_minima_muestras) {
+                if (i - indices_picos.back() < static_cast<size_t>(distancia_minima_muestras)) {
                     es_pico_valido = false;
                 }
             }
@@ -309,4 +312,145 @@ Anomalias detectarAnomalias(const ResultadosBPM &datos)
     return a;
 }
 
-// Integración y pruebas (main)
+// ========== PRUEBAS UNITARIAS ==========
+void pruebasUnitarias() {
+    cout << "\n========== PRUEBAS UNITARIAS ==========\n" << endl;
+    int pruebas_exitosas = 0;
+    int pruebas_totales = 0;
+
+    // Prueba 1: FFT de señal simple
+    pruebas_totales++;
+    try {
+        vector<double> senal = {1.0, 0.0, -1.0, 0.0};
+        vector<complex<double>> resultado = fft_real(senal);
+        if (resultado.size() == 4) {
+            cout << "[OK] Prueba 1: FFT procesa señal correctamente" << endl;
+            pruebas_exitosas++;
+        } else {
+            cout << "[FAIL] Prueba 1: Tamaño incorrecto" << endl;
+        }
+    } catch (...) {
+        cout << "[FAIL] Prueba 1: Excepción inesperada" << endl;
+    }
+
+    // Prueba 2: FFT requiere potencia de 2
+    pruebas_totales++;
+    try {
+        vector<complex<double>> senal_invalida = {{1,0}, {2,0}, {3,0}};
+        fft(senal_invalida);
+        cout << "[FAIL] Prueba 2: No detectó tamaño inválido" << endl;
+    } catch (runtime_error& e) {
+        cout << "[OK] Prueba 2: FFT rechaza tamaño no potencia de 2" << endl;
+        pruebas_exitosas++;
+    }
+
+    // Prueba 3: IFFT recupera señal original
+    pruebas_totales++;
+    try {
+        vector<double> original = {1.0, 2.0, 3.0, 4.0};
+        vector<complex<double>> fft_result = fft_real(original);
+        vector<double> recuperada = ifft_real(fft_result);
+        bool correcto = true;
+        for (size_t i = 0; i < original.size(); i++) {
+            if (abs(original[i] - recuperada[i]) > 0.001) {
+                correcto = false;
+                break;
+            }
+        }
+        if (correcto) {
+            cout << "[OK] Prueba 3: IFFT recupera señal original" << endl;
+            pruebas_exitosas++;
+        } else {
+            cout << "[FAIL] Prueba 3: Señal recuperada difiere del original" << endl;
+        }
+    } catch (...) {
+        cout << "[FAIL] Prueba 3: Excepción inesperada" << endl;
+    }
+
+    // Prueba 4: Detección de picos con umbral
+    pruebas_totales++;
+    try {
+        vector<double> senal = {0.1, 0.5, 0.3, 0.8, 0.2, 0.9, 0.1};
+        vector<size_t> picos = detectarPicos(senal, 0.5, 1);
+        if (picos.size() >= 2) {
+            cout << "[OK] Prueba 4: Detector de picos funciona" << endl;
+            pruebas_exitosas++;
+        } else {
+            cout << "[FAIL] Prueba 4: No detectó picos esperados" << endl;
+        }
+    } catch (...) {
+        cout << "[FAIL] Prueba 4: Excepción inesperada" << endl;
+    }
+
+    // Prueba 5: Cálculo de BPM válido
+    pruebas_totales++;
+    try {
+        vector<double> senal(1000, 0.0);
+        double fs = 1000.0;
+        for (int i = 0; i < 10; i++) {
+            int pos = i * 100;
+            if (pos < (int)senal.size()) senal[pos] = 1.0;
+        }
+        ResultadosBPM resultado = extraerBPM(senal, fs, 0.5, 50);
+        if (resultado.bpm_promedio > 0 && resultado.bpm_promedio < 200) {
+            cout << "[OK] Prueba 5: Cálculo de BPM genera valor válido" << endl;
+            pruebas_exitosas++;
+        } else {
+            cout << "[FAIL] Prueba 5: BPM fuera de rango esperado" << endl;
+        }
+    } catch (...) {
+        cout << "[FAIL] Prueba 5: Excepción inesperada" << endl;
+    }
+
+    // Prueba 6: Detección de bradicardia
+    pruebas_totales++;
+    try {
+        ResultadosBPM datos_bradi;
+        datos_bradi.bpm_promedio = 50.0;
+        datos_bradi.intervalos_rr_segundos = {1.2, 1.2, 1.2};
+        Anomalias resultado = detectarAnomalias(datos_bradi);
+        if (resultado.bradicardia) {
+            cout << "[OK] Prueba 6: Detecta bradicardia (BPM < 60)" << endl;
+            pruebas_exitosas++;
+        } else {
+            cout << "[FAIL] Prueba 6: No detectó bradicardia" << endl;
+        }
+    } catch (...) {
+        cout << "[FAIL] Prueba 6: Excepción inesperada" << endl;
+    }
+
+    // Prueba 7: Detección de taquicardia
+    pruebas_totales++;
+    try {
+        ResultadosBPM datos_taqui;
+        datos_taqui.bpm_promedio = 120.0;
+        datos_taqui.intervalos_rr_segundos = {0.5, 0.5, 0.5};
+        Anomalias resultado = detectarAnomalias(datos_taqui);
+        if (resultado.taquicardia) {
+            cout << "[OK] Prueba 7: Detecta taquicardia (BPM > 100)" << endl;
+            pruebas_exitosas++;
+        } else {
+            cout << "[FAIL] Prueba 7: No detectó taquicardia" << endl;
+        }
+    } catch (...) {
+        cout << "[FAIL] Prueba 7: Excepción inesperada" << endl;
+    }
+
+    // Prueba 8: Siguiente potencia de 2
+    pruebas_totales++;
+    try {
+        if (siguiente_potencia2(100) == 128 && siguiente_potencia2(256) == 256) {
+            cout << "[OK] Prueba 8: Cálculo de siguiente potencia de 2 correcto" << endl;
+            pruebas_exitosas++;
+        } else {
+            cout << "[FAIL] Prueba 8: Cálculo incorrecto de potencia de 2" << endl;
+        }
+    } catch (...) {
+        cout << "[FAIL] Prueba 8: Excepción inesperada" << endl;
+    }
+
+    cout << "\n=== RESUMEN PRUEBAS UNITARIAS ===" << endl;
+    cout << "Exitosas: " << pruebas_exitosas << "/" << pruebas_totales << endl;
+    cout << "Tasa de éxito: " << (100.0 * pruebas_exitosas / pruebas_totales) << "%" << endl;
+}
+
