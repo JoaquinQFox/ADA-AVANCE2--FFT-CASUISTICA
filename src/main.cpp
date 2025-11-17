@@ -5,6 +5,9 @@
 #include <vector>
 #include <cmath>
 #include <complex>
+#include <numeric>
+#include <algorithm>
+
 using namespace std;
 
 // Instrucciones de uso:
@@ -170,7 +173,79 @@ vector<double> ifft_real(const vector<complex<double>>& X) {
 
 
 // Extracción de BPM
+vector<size_t> detectarPicos(const vector<double>& senal_filtrada, double umbral_picos, int distancia_minima_muestras) {
+    vector<size_t> indices_picos;
+    if (senal_filtrada.empty()) {
+        return indices_picos;
+    }
 
+    double valor_maximo = *std::max_element(senal_filtrada.begin(), senal_filtrada.end());
+    double umbral_absoluto = valor_maximo * umbral_picos; 
 
+    for (size_t i = 1; i < senal_filtrada.size() - 1; ++i) {
+        if (senal_filtrada[i] > umbral_absoluto && 
+            senal_filtrada[i] > senal_filtrada[i-1] && 
+            senal_filtrada[i] > senal_filtrada[i+1]) {
+            
+            bool es_pico_valido = true;
+            if (!indices_picos.empty()) {
+                if (i - indices_picos.back() < distancia_minima_muestras) {
+                    es_pico_valido = false;
+                }
+            }
+            if (es_pico_valido) {
+                indices_picos.push_back(i);
+            }
+        }
+    }
+    return indices_picos;
+}
+
+// Estructura para almacenar los resultados del BPM
+struct ResultadosBPM {
+    double bpm_promedio;
+    vector<double> intervalos_rr_segundos; 
+    vector<size_t> indices_picos;
+};
+
+ResultadosBPM extraerBPM(const vector<double>& senal_filtrada, double frecuencia_muestreo, double umbral_picos = 0.7, int distancia_minima_muestras = 0) {
+    ResultadosBPM resultados;
+    resultados.bpm_promedio = 0.0;
+    resultados.intervalos_rr_segundos.clear();
+    resultados.indices_picos.clear();
+
+    if (senal_filtrada.empty() || frecuencia_muestreo <= 0) {
+        return resultados;
+    }
+    // Calcular una distancia mínima
+    if (distancia_minima_muestras == 0) {
+        distancia_minima_muestras = static_cast<int>(0.2 * frecuencia_muestreo); // 0.2 segundos de "refractario" entre picos
+        if (distancia_minima_muestras < 1) distancia_minima_muestras = 1;
+    }
+
+    resultados.indices_picos = detectarPicos(senal_filtrada, umbral_picos, distancia_minima_muestras);
+
+    if (resultados.indices_picos.size() < 2) {
+        return resultados; // Minimo dos picos para calcular un intervalo
+    }
+
+    // Calcular los intervalos RR 
+    for (size_t i = 0; i < resultados.indices_picos.size() - 1; ++i) {
+        double tiempo_entre_picos = (double)(resultados.indices_picos[i+1] - resultados.indices_picos[i]) / frecuencia_muestreo;
+        resultados.intervalos_rr_segundos.push_back(tiempo_entre_picos);
+    }
+
+    // Calcular BPM promedio
+    if (!resultados.intervalos_rr_segundos.empty()) {
+        double suma_intervalos = std::accumulate(resultados.intervalos_rr_segundos.begin(), resultados.intervalos_rr_segundos.end(), 0.0);
+        double promedio_intervalo_rr = suma_intervalos / resultados.intervalos_rr_segundos.size();
+
+        if (promedio_intervalo_rr > 0) {
+            resultados.bpm_promedio = 60.0 / promedio_intervalo_rr;
+        }
+    }
+    
+    return resultados;
+}
 
 // Detección de anomalias
