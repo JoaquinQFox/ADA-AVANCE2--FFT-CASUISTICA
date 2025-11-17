@@ -6,6 +6,9 @@
 #include <cmath>
 using namespace std;
 
+// Instrucciones de uso:
+// Se trabaja con un audio WAV
+
 // Lectura de audio
 vector <double> cargar_normalizar_wav (const char* filename) {
     
@@ -15,6 +18,15 @@ vector <double> cargar_normalizar_wav (const char* filename) {
     vector<int16_t> samples(wav.totalPCMFrameCount);
     drwav_read_pcm_frames_s16(&wav, wav.totalPCMFrameCount, samples.data());
     drwav_uninit(&wav);
+
+    // Normalización
+    vector <double> normalizado;
+    normalizado.reserve(samples.size());
+
+    for (int16_t s : samples)
+        normalizado.push_back(s / 32768.0);
+    
+    return normalizado;
 }
 
 
