@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
+#include <complex>
 using namespace std;
 
 // Instrucciones de uso:
@@ -47,7 +48,22 @@ vector <double> cargar_normalizar_wav (const char* filename) {
 
 
 // Filtrado de frecuencias cardiacas
+void filtrarFrecuencias(vector<complex<double>>& fft, double fs) { // fs = frecuencia de muestreo
+    int n = fft.size();
+    double minFreq = 0.5;
+    double maxFreq = 3.5;
 
+    for (int i = 0; i <= n/2; i++) {
+        double freq = (i * fs) / n;
+
+        if (freq < minFreq || freq > maxFreq) {
+            fft[i] = {0.0, 0.0};
+
+            if (i != 0 && i != n/2)
+                fft[n - i] = {0.0, 0.0};
+        }
+    }
+}
 
 
 // IFFT
