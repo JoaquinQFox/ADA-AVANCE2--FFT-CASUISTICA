@@ -137,39 +137,3 @@ void filtrarFrecuencias(vector<complex<double>>& fft, double fs) { // fs = frecu
 
 
 // Detección de anomalias
-// Main
-int main() {
-    try {
-
-        vector<double> senal = cargar_normalizar_wav("mi_audio.wav"); 
-
-        // ========= Persona 1: FFT y entrega de espectro =========
-        vector<complex<double>> espectro = obtenerEspectroParaFiltrado(senal);
-        
-        // Información para depuración
-        cout << "Señal original: " << senal.size() << " muestras" << endl;
-        cout << "Espectro FFT: " << espectro.size() << " componentes" << endl;
-
-        // Obtener frecuencia de muestreo real del archivo
-        drwav wav;
-        string ruta = string("audios/") + "mi_audio.wav";
-        double fs = 44100.0; // valor por defecto
-        if (drwav_init_file(&wav, ruta.c_str(), NULL)) {
-            fs = wav.sampleRate;
-            drwav_uninit(&wav);
-        }
-        cout << "Frecuencia de muestreo: " << fs << " Hz" << endl;
-
-        // ========= Persona 3: filtrado de frecuencias cardíacas =========
-        cout << "Aplicando filtro de frecuencias cardíacas (0.5 - 3.5 Hz)..." << endl;
-        filtrarFrecuencias(espectro, fs);
-        cout << "Filtrado completado." << endl;
-
-        // A partir de aquí siguen Persona 4 (IFFT), 5 (BPM), 6 (anomalías), etc.
-
-    } catch (const exception& e) {
-        cerr << "Error: " << e.what() << endl;
-    }
-
-    return 0;
-}
