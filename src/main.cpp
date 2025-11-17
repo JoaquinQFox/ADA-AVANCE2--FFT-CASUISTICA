@@ -249,3 +249,64 @@ ResultadosBPM extraerBPM(const vector<double>& senal_filtrada, double frecuencia
 }
 
 // Detección de anomalias
+struct Anomalias
+{
+    bool bradicardia = false;
+    bool taquicardia = false;
+    bool irregularidad = false;
+    vector<string> lista_alertas;
+};
+
+Anomalias detectarAnomalias(const ResultadosBPM &datos)
+{
+    Anomalias a;
+
+    if (datos.bpm_promedio == 0 || datos.intervalos_rr_segundos.empty())
+    {
+        a.lista_alertas.push_back("No se puede evaluar anomalías (datos insuficientes)");
+        return a;
+    }
+
+    double bpm = datos.bpm_promedio;
+
+    // --- Reglas simples ---
+    if (bpm < 60)
+    {
+        a.bradicardia = true;
+        a.lista_alertas.push_back("Bradicardia detectada (BPM < 60)");
+    }
+    if (bpm > 100)
+    {
+        a.taquicardia = true;
+        a.lista_alertas.push_back("Taquicardia detectada (BPM > 100)");
+    }
+
+    // --- Irregularidad usando variabilidad RR ---
+    double promedio = accumulate(datos.intervalos_rr_segundos.begin(),
+                                 datos.intervalos_rr_segundos.end(), 0.0) /
+                      datos.intervalos_rr_segundos.size();
+
+    double varianza = 0.0;
+    for (double rr : datos.intervalos_rr_segundos)
+    {
+        varianza += pow(rr - promedio, 2);
+    }
+    varianza /= datos.intervalos_rr_segundos.size();
+    double sdnn = sqrt(varianza); // desviación estándar RR
+
+    // Regla simple para irregularidad cardíaca
+    if (sdnn > 0.10)
+    { // >100 ms
+        a.irregularidad = true;
+        a.lista_alertas.push_back("Latido irregular (SDNN > 0.10s)");
+    }
+
+    if (a.lista_alertas.empty())
+    {
+        a.lista_alertas.push_back("No se detectaron anomalías.");
+    }
+
+    return a;
+}
+
+// Integración y pruebas (main)
