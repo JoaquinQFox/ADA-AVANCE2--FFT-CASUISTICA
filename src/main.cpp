@@ -11,15 +11,17 @@ using namespace std;
 // audio WAV
 // audio MONO
 // audio de 16 bits
+// solo lee desde la carpeta de audios
 
 // Lectura de audio
 vector <double> cargar_normalizar_wav (const char* filename) {
     
     drwav wav;
-    
+    string ruta = string("audios/") + filename;
+
     // Excepción de error al abrir
-    if (!drwav_init_file(&wav, filename, NULL))
-        throw runtime_error("No se abre audio WAV");
+    if (!drwav_init_file(&wav, ruta.c_str(), NULL))
+        throw runtime_error("No se encuentra el audio WAV");
 
     // Excepción de audio MONO
     if (wav.channels != 1) {
